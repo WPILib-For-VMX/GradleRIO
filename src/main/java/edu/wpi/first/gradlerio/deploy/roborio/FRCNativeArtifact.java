@@ -99,6 +99,7 @@ public class FRCNativeArtifact extends DebuggableNativeArtifact {
 
     private String generateStartCommand(DeployContext ctx) {
         StringBuilder builder = new StringBuilder();
+        builder.append(roboRIO.getRuntimeCommandPrefix());
         boolean debug = roboRIO.getDebug().get();
         if (debug) {
             builder.append("gdbserver host:");

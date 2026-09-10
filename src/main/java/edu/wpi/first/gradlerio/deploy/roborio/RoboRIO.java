@@ -65,6 +65,21 @@ public class RoboRIO extends WPIRemoteTarget {
         return checkImage;
     }
 
+    /** Whether this target needs the bundled FRC JRE deployed. */
+    public boolean usesBundledJre() {
+        return true;
+    }
+
+    /** Prefix placed before a deployed program's command line. */
+    public String getRuntimeCommandPrefix() {
+        return "";
+    }
+
+    /** Java executable used by artifacts deployed to this target. */
+    public String getJavaCommand() {
+        return "/usr/local/frc/JRE/bin/java";
+    }
+
     public void setCheckImage(boolean checkImage) {
         this.checkImage = checkImage;
     }

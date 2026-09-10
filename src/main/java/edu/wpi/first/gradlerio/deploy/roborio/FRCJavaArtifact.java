@@ -29,12 +29,13 @@ public class FRCJavaArtifact extends DebuggableJavaArtifact {
 
     private GarbageCollectorType gcType = GarbageCollectorType.Serial;
 
-    private String javaCommand = "/usr/local/frc/JRE/bin/java";
+    private String javaCommand;
 
     @Inject
     public FRCJavaArtifact(String name, RoboRIO target) {
         super(name, target);
         roboRIO = target;
+        javaCommand = target.getJavaCommand();
 
         jvmArgs.add("-Djava.lang.invoke.stringConcat=BC_SB");
         jvmArgs.add("-Djava.library.path=" + FRCDeployPlugin.LIB_DEPLOY_DIR);
@@ -77,7 +78,9 @@ public class FRCJavaArtifact extends DebuggableJavaArtifact {
 
         getPostdeploy().add(ctx -> {
             String binFile = getBinFile(ctx);
-            ctx.execute("chmod +x \"" + binFile + "\"; chown lvuser \"" + binFile + "\"");
+            // chown은 VMX-pi(vmx 유저, lvuser 없음)에서 실패할 수 있으므로 || true로
+            // 감싼다. chmod +x는 두 플랫폼 모두 필요하니 그대로 둔다.
+            ctx.execute("chmod +x \"" + binFile + "\"; chown lvuser \"" + binFile + "\" || true");
         });
 
         target.setDeployStage(this, DeployStage.FileDeploy);
@@ -141,6 +144,7 @@ public class FRCJavaArtifact extends DebuggableJavaArtifact {
 
     private String generateStartCommand(DeployContext ctx) {
         StringBuilder builder = new StringBuilder();
+        builder.append(roboRIO.getRuntimeCommandPrefix());
         builder.append(javaCommand);
         builder.append(" ");
         builder.append(String.join(" ", gcType.getGcArguments()));

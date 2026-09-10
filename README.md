@@ -158,3 +158,58 @@ plugins {
     id "edu.wpi.first.GradleRIO" version "REPLACE ME WITH THE PUBLISHED VERSION"
 }
 ```
+# GradleRIO
+
+## VMX-pi deployment
+
+GradleRIO provides a `VMX` target for VMX-pi. It builds native artifacts for
+`linuxarm64`, connects over SSH as `vmx`, and deploys to `/home/lvuser`.
+The target accepts `vmx`, `vmx.local`, and the usual team-number address.
+
+```groovy
+deploy {
+    targets {
+        vmx(getTargetTypeClass('VMX')) {
+            team = project.frc.getTeamNumber()
+            debug = project.frc.getDebugOrDefault(false)
+
+            artifacts {
+                frcCpp(getArtifactTypeClass('FRCNativeArtifact')) {
+                }
+            }
+        }
+    }
+}
+```
+
+The robot program is launched with a `sudo env LD_LIBRARY_PATH=... ` prefix,
+because the VMX HAL opens pigpio and SPI, which require root. For the unattended
+start to work, the `vmx` user must have **passwordless sudo** (e.g. a
+`/etc/sudoers.d` entry granting `NOPASSWD` for that user). Deploy also runs
+`chown lvuser:ni`; on the VMX-pi that user/group does not exist, so the chown is
+tolerated (`|| true`) and ownership stays with the `vmx` SSH user, which runs the
+program.
+
+### Java vs C++: where the robot is compiled
+
+**Java/Kotlin — cross-platform, no compiler needed.** Java robots deploy the
+`.jar` plus the `linuxarm64` native libraries; nothing is compiled for the board
+on the developer PC. This path is fully turnkey from any OS.
+
+**C++ — build on the board.** GradleRIO registers a cross toolchain only for the
+roboRIO (arm32); it does **not** register a `linuxarm64` (aarch64) cross
+toolchain, so a C++ robot cannot be cross-compiled for the VMX-pi from a PC. The
+supported path is to **build C++ on the board itself**, which has a native
+aarch64 GCC:
+
+1. Get the project onto the board (git clone, `scp`, or a shared folder).
+2. On the board, build and install locally, e.g.
+   `./gradlew build` then run the produced executable with the same
+   `sudo env LD_LIBRARY_PATH=/usr/local/lib/vmxpi:... ` prefix the deploy uses.
+   (Because the build host *is* the target, this is a native build, not a
+   cross build — the `VMX` deploy target above is for the from-PC Java flow.)
+
+Registering a real `linuxarm64` cross toolchain (so C++ could be built and
+deployed from a PC like the roboRIO flow) is possible but not done here; it would
+require adding an aarch64 toolchain descriptor to GradleRIO. Until then, C++ is
+board-built.

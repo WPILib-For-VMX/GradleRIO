@@ -40,6 +40,9 @@ public class FRCJREArtifact extends MavenArtifact {
         getDependency().set(project.getDependencies().add(configName, wpiExt.getJreArtifactLocation()));
 
         setOnlyIf(ctx -> {
+            if (target instanceof RoboRIO && !((RoboRIO) target).usesBundledJre()) {
+                return false;
+            }
             return jreMissing(ctx) || jreOutOfDate(ctx) || project.hasProperty("force-redeploy-jre");
         });
 

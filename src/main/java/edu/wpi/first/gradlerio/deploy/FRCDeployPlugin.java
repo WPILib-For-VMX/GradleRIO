@@ -18,6 +18,7 @@ import edu.wpi.first.gradlerio.deploy.roborio.FRCNativeArtifact;
 import edu.wpi.first.gradlerio.deploy.roborio.FRCProgramStartArtifact;
 import edu.wpi.first.gradlerio.deploy.roborio.RoboRIO;
 import edu.wpi.first.gradlerio.deploy.roborio.RobotCommandArtifact;
+import edu.wpi.first.gradlerio.deploy.vmx.VMX;
 import edu.wpi.first.deployutils.deploy.NamedObjectFactory;
 
 public class FRCDeployPlugin implements Plugin<Project> {
@@ -59,6 +60,12 @@ public class FRCDeployPlugin implements Plugin<Project> {
             configureRoboRIOTypes(target);
             return target;
         });
+
+        deployExtension.getTargets().registerFactory(VMX.class, name -> {
+            VMX target = project.getObjects().newInstance(VMX.class, name, project, deployExtension, frcExtension);
+            configureRoboRIOTypes(target);
+            return target;
+        });
     }
 
     public Project getProject() {
@@ -66,7 +73,11 @@ public class FRCDeployPlugin implements Plugin<Project> {
     }
 
     public static void ownDirectory(DeployContext ctx, String directory) {
-        ctx.execute("chmod -R 777 \"" + directory + "\" || true; chown -R lvuser:ni \"" + directory + "\"");
+        // chown도 || true로 감싼다. VMX-pi는 vmx 유저로 돌고 lvuser 유저나 ni 그룹이
+        // 없어 chown이 실패하는데, 그때도 배포가 멈추면 안 된다(소유권은 SSH 유저인
+        // vmx로 남고, 그 유저가 프로그램을 실행하므로 문제없다). roboRIO에서는 그대로
+        // 성공한다.
+        ctx.execute("chmod -R 777 \"" + directory + "\" || true; chown -R lvuser:ni \"" + directory + "\" || true");
     }
 
     public static DeployExtension deployExtension(Project project) {
